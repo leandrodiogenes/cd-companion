@@ -58,7 +58,13 @@ HOTKEY_VK   = ord('M')
 
 # ── Config ────────────────────────────────────────────────────────────
 def start_lang_server():
-    lang_dir = os.path.join(os.path.dirname(__file__), "lang")
+    if getattr(sys, 'frozen', False):
+        BASE_DIR = os.path.dirname(sys.executable)
+    else:
+        BASE_DIR = os.path.dirname(__file__)
+    lang_dir = os.path.join(BASE_DIR, "lang")
+    if not os.path.isdir(lang_dir):
+        raise FileNotFoundError(f"Language folder not found: {lang_dir}")
 
     class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
         def end_headers(self):

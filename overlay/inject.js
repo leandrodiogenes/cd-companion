@@ -11,6 +11,7 @@
 
   let currentLang = 'en';
   let LANG = {};
+  let LANG_OPTIONS = {};
 
   let ws              = null;
   let marker          = null;
@@ -37,16 +38,23 @@
       const res = await fetch(`${LANG_URL_BASE}/${lang}.json`);
       LANG = await res.json();
       currentLang = lang;
-
       if (!window.__cdSettings) window.__cdSettings = {};
       window.__cdSettings.language = lang;
-
       localStorage.setItem('cd_language', lang);
-
       console.log('[LANG] Loaded:', lang);
       refreshLocalizedText();
     } catch (err) {
       console.error('[LANG] Failed to load:', lang, err);
+    }
+  }
+
+  async function loadLanguageOptions() {
+    try {
+      const res = await fetch(`${LANG_URL_BASE}/langSelect.json`);
+      LANG_OPTIONS = await res.json();
+      populateLanguageDropdown();
+    } catch (err) {
+      console.error('[LANG] Failed to load options:', err);
     }
   }
 
@@ -60,6 +68,19 @@
       text = text.split(`{${k}}`).join(String(vars[k]));
     });
     return text;
+  }
+
+  function populateLanguageDropdown() {
+    const select = document.getElementById('cdLangSelect');
+    if (!select) return;
+    select.innerHTML = '';
+    Object.entries(LANG_OPTIONS).forEach(([code, name]) => {
+      const opt = document.createElement('option');
+      opt.value = code;
+      opt.textContent = name;
+      select.appendChild(opt);
+    });
+    select.value = currentLang;
   }
 
   function refreshLocalizedText() {
@@ -372,8 +393,6 @@
         <select id="cdLangSelect"
           style="flex:1;background:#111;border:1px solid #333;color:#eee;
           font-size:10px;border-radius:4px;padding:2px">
-          <option value="en">English</option>
-          <option value="pt">Português</option>
         </select>
       </div>
       <div id="cdOvCoords" style="font:11px/1.5 Consolas,monospace;color:#bbb;margin-bottom:2px">--</div>
@@ -1198,6 +1217,7 @@
   })();
 
   loadLanguage((window.__cdSettings && window.__cdSettings.language) || localStorage.getItem('cd_language') || 'en');
+  loadLanguageOptions();
 
   // ── CSS overrides ──────────────────────────────────────────────────
   (function injectCSS() {
