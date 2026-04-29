@@ -20,6 +20,8 @@ import json
 import os
 import sys
 import threading
+import http.server
+import socketserver
 
 from PyQt5.QtCore import Qt, QUrl, QTimer, pyqtSignal, QObject
 from PyQt5.QtWidgets import QApplication
@@ -55,6 +57,23 @@ HOTKEY_VK   = ord('M')
 # SETTING_DEFAULTS importado de overlay_config_defaults.py
 
 # ── Config ────────────────────────────────────────────────────────────
+def start_lang_server():
+    lang_dir = os.path.join(os.path.dirname(__file__), "lang")
+
+    class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
+        def end_headers(self):
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "*")
+            self.send_header("Cache-Control", "no-store")
+            super().end_headers()
+        def do_OPTIONS(self):
+            self.send_response(204)
+            self.end_headers()
+    os.chdir(lang_dir)
+    with socketserver.TCPServer(("127.0.0.1", 8765), CORSRequestHandler) as httpd:
+        print("[*] Language server running at http://127.0.0.1:8765")
+        httpd.serve_forever()
 
 def load_config():
     try:
@@ -554,6 +573,12 @@ def main():
                 break
         except Exception:
             time.sleep(0.2)
+    lang_thread = threading.Thread(
+        target=start_lang_server,
+        daemon=True,
+        name="cd-lang-server"
+    )
+    lang_thread.start()
 
     app = QApplication(sys.argv)
     app.setApplicationName('CD Map Overlay')

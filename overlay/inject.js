@@ -7,6 +7,11 @@
   const RECONNECT_MS = 3000;
   const CENTER_TELEPORT_Y_KEY = 'cd_center_teleport_y';
 
+  const LANG_URL_BASE = 'http://127.0.0.1:8765';
+
+  let currentLang = 'en';
+  let LANG = {};
+
   let ws              = null;
   let marker          = null;
   let map             = null;
@@ -26,6 +31,94 @@
 
   document.addEventListener('keydown', (e) => { if (e.key === 'Shift') shiftHeld = true;  });
   document.addEventListener('keyup',   (e) => { if (e.key === 'Shift') shiftHeld = false; });
+
+  async function loadLanguage(lang) {
+    try {
+      const res = await fetch(`${LANG_URL_BASE}/${lang}.json`);
+      LANG = await res.json();
+      currentLang = lang;
+
+      if (!window.__cdSettings) window.__cdSettings = {};
+      window.__cdSettings.language = lang;
+
+      localStorage.setItem('cd_language', lang);
+
+      console.log('[LANG] Loaded:', lang);
+      refreshLocalizedText();
+    } catch (err) {
+      console.error('[LANG] Failed to load:', lang, err);
+    }
+  }
+
+  function t(key) {
+    return LANG[key] || key;
+  }
+
+  function tf(key, vars) {
+    let text = String(t(key));
+    Object.keys(vars || {}).forEach(k => {
+      text = text.split(`{${k}}`).join(String(vars[k]));
+    });
+    return text;
+  }
+
+  function refreshLocalizedText() {
+    const langLabel = document.getElementById('cdLangLabel');
+    if (langLabel) langLabel.textContent = t('languageLabel');
+
+    const langSelect = document.getElementById('cdLangSelect');
+    if (langSelect && langSelect.value !== currentLang) {
+      langSelect.value = currentLang;
+    }
+    const expand = document.getElementById('cdOvExpandBtn');
+    if (expand) expand.title = t('expandPanelTitle');
+    const marker = document.getElementById('cdOvMarker');
+    if (marker) {
+      marker.title = t('teleportMarkerTitle');
+      marker.textContent = t('teleportMarkerButton');
+    }
+    const abort = document.getElementById('cdOvAbort');
+    if (abort) {
+      abort.title = t('abortTitle');
+      abort.textContent = t('abortButton');
+    }
+    const calib = document.getElementById('cdOvCalibrate');
+    if (calib) calib.title = t('calibrationButtonTitle');
+    const wpToggle = document.getElementById('cdWpToggle');
+    if (wpToggle) wpToggle.title = t('waypointsToggleTitle');
+    const centerTp = document.getElementById('cdCenterTp');
+    if (centerTp) centerTp.title = t('centerTeleportOpenTitle');
+    const centerPanelTitle = document.getElementById('cdCenterPanelTitle');
+    if (centerPanelTitle) centerPanelTitle.textContent = t('centerScreenTitle');
+    const centerPanelTp = document.getElementById('cdCenterPanelTp');
+    if (centerPanelTp) {
+      centerPanelTp.title = t('centerTeleportButtonTitle');
+      centerPanelTp.textContent = t('teleportButton');
+    }
+    const wpPanelTitle = document.getElementById('cdWpPanelTitle');
+    if (wpPanelTitle) wpPanelTitle.textContent = t('waypointsPanelTitle');
+    const wpSave = document.getElementById('cdWpSave');
+    if (wpSave) {
+      wpSave.title = t('saveCurrentPositionTitle');
+      wpSave.textContent = t('saveButton');
+    }
+    const wpFilter = document.getElementById('cdWpFilter');
+    if (wpFilter) wpFilter.placeholder = t('filterWaypointsPlaceholder');
+    const popupDoc = getWaypointPopupDoc && getWaypointPopupDoc();
+    if (popupDoc) {
+      const popupTitle = popupDoc.getElementById('cdWpPopupTitle');
+      if (popupTitle) popupTitle.textContent = t('waypointsTitle');
+      const popupSave = popupDoc.getElementById('cdWpPopupSave');
+      if (popupSave) popupSave.textContent = t('saveButton');
+      const popupFilter = popupDoc.getElementById('cdWpPopupFilter');
+      if (popupFilter) popupFilter.placeholder = t('filterWaypointsPlaceholder');
+      if (popupDoc.title !== undefined) popupDoc.title = t('waypointsWindowTitle');
+    }
+
+    updatePanel();
+    renderWaypoints();
+  }
+
 
   // ── Tooltip de localização (hover sobre ícones do mapa) ──────────────
   let _tooltip = null;
@@ -228,7 +321,7 @@
     // Botão expand/collapse (abre o painel completo)
     const expand = document.createElement('button');
     expand.id = 'cdOvExpandBtn';
-    expand.title = 'Expandir painel';
+    expand.title = t('expandPanelTitle');
     expand.textContent = '⊞';
     expand.style.cssText = `width:28px;height:36px;border-radius:6px;
       background:rgba(12,12,18,.9);border:1px solid rgba(255,208,96,.25);
@@ -248,13 +341,13 @@
     // Botão follow (sempre visível, reflete estado)
     const followBtn = document.createElement('button');
     followBtn.id = 'cdOvFollowFloat';
-    followBtn.title = 'Alternar Follow';
+    followBtn.title = t('followToggleTitle');
     followBtn.style.cssText = `height:36px;padding:0 12px;border-radius:6px;
       background:rgba(12,30,20,.95);border:1.5px solid rgba(80,220,120,.6);
       color:#60e890;font:bold 11px 'Segoe UI',sans-serif;cursor:pointer;
       box-shadow:0 3px 12px rgba(0,0,0,.6);backdrop-filter:blur(6px);
       white-space:nowrap;transition:background .15s,border-color .15s,color .15s`;
-    followBtn.textContent = '🗺 Follow: ON';
+    followBtn.textContent = t('followOn');
     followBtn.addEventListener('click', toggleFollow);
 
     bar.appendChild(expand);
@@ -274,29 +367,45 @@
       padding:7px 11px;min-width:210px;backdrop-filter:blur(5px);
       box-shadow:0 4px 18px rgba(0,0,0,.5);user-select:none;display:none`;
     el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <span id="cdLangLabel" style="font-size:10px;color:#aaa">${t('languageLabel')}</span>
+        <select id="cdLangSelect"
+          style="flex:1;background:#111;border:1px solid #333;color:#eee;
+          font-size:10px;border-radius:4px;padding:2px">
+          <option value="en">English</option>
+          <option value="pt">Português</option>
+        </select>
+      </div>
       <div id="cdOvCoords" style="font:11px/1.5 Consolas,monospace;color:#bbb;margin-bottom:2px">--</div>
-      <div id="cdOvStatus" style="font-size:10px;color:#e07070">Connecting…</div>
+      <div id="cdOvStatus" style="font-size:10px;color:#e07070">${t('connecting')}</div>
       <div style="display:flex;gap:4px;margin-top:5px">
-        <button id="cdOvMarker" title="Teleportar para marcador do mapa in-game"
+        <button id="cdOvMarker" title="${t('teleportMarkerTitle')}"
           style="flex:1;background:rgba(100,160,255,.15);border:1px solid rgba(100,160,255,.4);
           color:#80b4ff;font:10px 'Segoe UI';padding:3px 5px;border-radius:4px;cursor:pointer">
-          📍 Ir ao Marcador
+          ${t('teleportMarkerButton')}
         </button>
-        <button id="cdOvAbort" title="Voltar para posição antes do último teleport"
+        <button id="cdOvAbort" title="${t('abortTitle')}"
           style="flex:1;background:rgba(255,100,100,.12);border:1px solid rgba(255,100,100,.35);
           color:#ff8080;font:10px 'Segoe UI';padding:3px 5px;border-radius:4px;
           cursor:pointer;opacity:.35;pointer-events:none">
-          ↩ Abortar
+          ${t('abortButton')}
         </button>
       </div>
-      <button id="cdOvCalibrate" title="Modo calibração: clique no mapa para adicionar ponto de referência"
+      <button id="cdOvCalibrate" title="${t('calibrationButtonTitle')}"
         style="width:100%;margin-top:4px;background:rgba(255,208,96,.08);
         border:1px solid rgba(255,208,96,.2);color:#888;
         font:10px 'Segoe UI';padding:3px 5px;border-radius:4px;cursor:pointer">
-        🎯 Calibração: OFF
+        ${t('calibrationOff')}
       </button>
     `;
     document.body.appendChild(el);
+    const langSelect = document.getElementById('cdLangSelect');
+    if (langSelect) {
+      langSelect.value = localStorage.getItem('cd_language') || currentLang;
+      langSelect.addEventListener('change', () => {
+        loadLanguage(langSelect.value);
+      });
+    }
     document.getElementById('cdOvMarker').addEventListener('click', () => {
       sendCmd({ cmd: 'teleport_marker' });
     });
@@ -317,8 +426,8 @@
     const followFloat = document.getElementById('cdOvFollowFloat');
     if (followFloat) {
       const isRound = !!(window.__cdSettings && window.__cdSettings.roundWindow);
-      followFloat.textContent  = isRound ? 'F' : `🗺 Follow: ${following ? 'ON' : 'OFF'}`;
-      followFloat.title = `Alternar Follow (${following ? 'ON' : 'OFF'})`;
+      followFloat.textContent  = isRound ? 'F' : (following ? t('followOn') : t('followOff'));
+      followFloat.title = tf('followToggleStateTitle', { state: following ? t('on') : t('off') });
       followFloat.style.background  = following ? 'rgba(12,30,20,.95)'  : 'rgba(30,20,0,.95)';
       followFloat.style.borderColor = following ? 'rgba(80,220,120,.6)' : 'rgba(255,208,96,.6)';
       followFloat.style.color       = following ? '#60e890' : '#ffd060';
@@ -334,8 +443,7 @@
     if (status) {
       const ok = ws && ws.readyState === 1;
       status.textContent = ok
-        ? (lastPos ? `Realm: ${lastPos.realm}` : 'Mova o personagem para iniciar')
-        : 'Server offline — rode position_server.py';
+      ? (lastPos ? tf('realmStatus', { realm: lastPos.realm }) : t('moveCharacterToStart')) : t('serverOffline');
       status.style.color = ok ? '#60e890' : '#e07070';
     }
     if (abort) {
@@ -343,7 +451,7 @@
       abort.style.pointerEvents = hasPreTeleport ? 'auto' : 'none';
     }
     if (calib) {
-      calib.textContent       = calibrationMode ? '🎯 Calibração: ON (clique no mapa)' : '🎯 Calibração: OFF';
+      calib.textContent       = calibrationMode ? t('calibrationOnClickMap') : t('calibrationOff');
       calib.style.color       = calibrationMode ? '#ffd060' : '#888';
       calib.style.borderColor = calibrationMode ? 'rgba(255,208,96,.5)' : 'rgba(255,208,96,.2)';
       calib.style.background  = calibrationMode ? 'rgba(255,208,96,.15)' : 'rgba(255,208,96,.08)';
@@ -365,7 +473,7 @@
     const canvas = document.querySelector('.mapboxgl-canvas');
     if (canvas) canvas.style.cursor = calibrationMode ? 'crosshair' : '';
     if (calibrationMode)
-      setStatus('Clique no mapa na posição do personagem', '#ffd060');
+      setStatus(t('clickMapAtCharacterPosition'), '#ffd060');
   }
 
   function onMapClick(e) {
@@ -490,8 +598,8 @@
         'transition:opacity .3s;opacity:0;white-space:nowrap';
       document.body.appendChild(toast);
     }
-    const action = found ? 'marcado' : 'desmarcado';
-    toast.textContent = 'Location #' + locationId + ' ' + action + ' em outro cliente';
+    const action = found ? t('locationFoundAction') : t('locationUnfoundAction');
+    toast.textContent = tf('locationSyncToast', { locationId, action });
     toast.style.opacity = '1';
     clearTimeout(toast._t);
     toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 4000);
@@ -543,7 +651,7 @@
           if (msg.ok) {
             hasPreTeleport = true; updatePanel();
           } else {
-            setStatus(msg.err || 'Sem marcador no mapa', '#e07070', 3000);
+            setStatus(msg.err || t('noMarkerOnMap'), '#e07070', 3000);
           }
 
         } else if (msg.type === 'teleport_map_result') {
@@ -551,15 +659,15 @@
             hasPreTeleport = true; updatePanel();
           } else {
             hasPreTeleport = false; updatePanel();
-            setStatus(msg.err || 'Teleport pelo mapa falhou', '#e07070', 3000);
+            setStatus(msg.err || t('mapTeleportFailed'), '#e07070', 3000);
           }
 
         } else if (msg.type === 'calibration_result') {
           if (msg.reset) {
             calibrationMode = false; updatePanel();
-            setStatus('Calibração resetada', '#60e890', 3000);
+            setStatus(tf('calibrationReset'), '#60e890', 3000);
           } else if (msg.ok) {
-            setStatus(`Calibração: ${msg.count} ponto(s) salvo(s)`, '#60e890', 3000);
+            setStatus(tf('calibrationPointsSaved', { count: msg.count }), '#60e890', 3000);
           }
         } else if (msg.type === 'location_toggle') {
           _onLocationToggle(msg.locationId, msg.found);
@@ -590,7 +698,7 @@
     if (document.getElementById('cdWpToggle')) return;
     const btn = document.createElement('button');
     btn.id = 'cdWpToggle';
-    btn.title = 'Waypoints  (abrir/fechar)';
+    btn.title = t('waypointsToggleTitle');
     btn.textContent = '⭕';
     btn.style.cssText = `position:fixed;bottom:12px;left:12px;z-index:10000;
       width:36px;height:36px;border-radius:50%;
@@ -621,7 +729,7 @@
     if (document.getElementById('cdCenterTp')) return;
     const btn = document.createElement('button');
     btn.id = 'cdCenterTp';
-    btn.title = 'Abrir teleporte para o centro da tela';
+    btn.title = t('centerTeleportOpenTitle');
     btn.textContent = '◎';
     btn.style.cssText = `position:fixed;bottom:12px;left:56px;z-index:10000;
       width:36px;height:36px;border-radius:50%;
@@ -660,7 +768,7 @@
       display:none;flex-direction:column;gap:7px;overflow:hidden`;
     el.innerHTML = `
       <div style="display:flex;align-items:center;gap:6px">
-        <span style="color:#80b4ff;font-weight:600;flex:1;font-size:12px">Centro da tela</span>
+        <span id="cdCenterPanelTitle" style="color:#80b4ff;font-weight:600;flex:1;font-size:12px">${t('centerScreenTitle')}</span>
       </div>
       <div style="display:flex;align-items:center;gap:7px">
         <span style="color:#bbb;font-size:11px;white-space:nowrap">Y <span id="cdCenterPanelYVal">${Math.round(getCenterTeleportY())}</span></span>
@@ -668,11 +776,11 @@
           value="${getCenterTeleportY()}"
           style="flex:1;min-width:110px;accent-color:#80b4ff;cursor:pointer">
       </div>
-      <button id="cdCenterPanelTp" title="Teleportar para o centro da tela"
+      <button id="cdCenterPanelTp" title="${t('centerTeleportButtonTitle')}"
         style="background:rgba(100,160,255,.14);border:1px solid rgba(100,160,255,.45);
         color:#80b4ff;font:11px 'Segoe UI';padding:4px 8px;border-radius:4px;
         cursor:pointer;width:100%">
-        Teleportar
+        ${t('teleportButton')}
       </button>
     `;
     document.body.appendChild(el);
@@ -698,9 +806,9 @@
       filter.addEventListener('input', () => setWaypointFilter(filter.value));
     }
     if (save) save.addEventListener('click', () => {
-      const name = prompt('Nome do waypoint:', lastPos
+      const name = prompt(tf('waypointNamePrompt'), lastPos
         ? `${lastPos.realm === 'abyss' ? '[Abyss] ' : ''}${Math.round(lastPos.x)}, ${Math.round(lastPos.z)}`
-        : 'Waypoint');
+        : t('waypointDefaultName'));
       if (name !== null) sendCmd({ cmd: 'save_waypoint', name });
     });
   }
@@ -724,7 +832,7 @@
         <html>
         <head>
           <meta charset="utf-8">
-          <title>CD Waypoints</title>
+          <title>${t('waypointsWindowTitle')}</title>
           <style>
             html,body{
               margin:0;width:100%;height:100%;overflow:hidden;
@@ -767,10 +875,10 @@
         <body>
           <div class="wrap">
             <div class="row">
-              <div class="title">Waypoints</div>
-              <button id="cdWpPopupSave" class="btn">+ Salvar</button>
+              <div id="cdWpPopupTitle" class="title">${t('waypointsTitle')}</div>
+              <button id="cdWpPopupSave" class="btn">${t('saveButton')}</button>
             </div>
-            <input id="cdWpPopupFilter" class="filter" placeholder="Filtrar waypoints">
+            <input id="cdWpPopupFilter" class="filter" placeholder="${t('filterWaypointsPlaceholder')}">
             <div id="cdWpPopupList" class="list"></div>
           </div>
         </body>
@@ -800,14 +908,14 @@
       display:none;flex-direction:column;gap:5px;overflow:hidden;`;
     el.innerHTML = `
       <div style="display:flex;align-items:center;gap:6px">
-        <span style="color:#ffd060;font-weight:600;flex:1;font-size:12px">⭕ Waypoints</span>
-        <button id="cdWpSave" title="Salvar posição atual"
+        <span id="cdWpPanelTitle" style="color:#ffd060;font-weight:600;flex:1;font-size:12px">${t('waypointsPanelTitle')}</span>
+        <button id="cdWpSave" title="${t('saveCurrentPositionTitle')}"
           style="background:rgba(255,208,96,.15);border:1px solid rgba(255,208,96,.4);
           color:#ffd060;font:11px 'Segoe UI';padding:2px 8px;border-radius:4px;cursor:pointer">
-          + Salvar
+          ${t('saveButton')}
         </button>
       </div>
-      <input id="cdWpFilter" placeholder="Filtrar waypoints"
+      <input id="cdWpFilter" placeholder="${t('filterWaypointsPlaceholder')}"
         style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);
         color:#e8e8e8;font:11px 'Segoe UI';padding:4px 7px;border-radius:4px;outline:none">
       <div id="cdWpList" style="overflow-y:auto;max-height:170px;display:flex;
@@ -817,9 +925,9 @@
 
     document.getElementById('cdWpFilter').addEventListener('input', (e) => setWaypointFilter(e.target.value));
     document.getElementById('cdWpSave').addEventListener('click', () => {
-      const name = prompt('Nome do waypoint:', lastPos
+      const name = prompt(tf('waypointNamePrompt'), lastPos
         ? `${lastPos.realm === 'abyss' ? '[Abyss] ' : ''}${Math.round(lastPos.x)}, ${Math.round(lastPos.z)}`
-        : 'Waypoint');
+        : t('waypointDefaultName'));
       if (name !== null) sendCmd({ cmd: 'save_waypoint', name });
     });
   }
@@ -848,7 +956,7 @@
     if (!list) return;
     if (waypoints.length === 0) {
       list.innerHTML = `<div style="color:#555;font-size:11px;text-align:center;padding:4px 0">
-        Nenhum waypoint salvo</div>`;
+        ${t('noWaypointsSaved')}</div>`;
       return;
     }
     const items = waypoints
@@ -856,7 +964,7 @@
       .filter(item => matchesWaypointFilter(item.wp));
     if (items.length === 0) {
       list.innerHTML = `<div style="color:#555;font-size:11px;text-align:center;padding:4px 0">
-        Nenhum waypoint encontrado</div>`;
+        ${t('noWaypointsFound')}</div>`;
       return;
     }
     list.innerHTML = items.map(({ wp, i }) => `
@@ -864,11 +972,11 @@
         border-radius:4px;padding:3px 6px;">
         <span style="flex:1;font-size:11px;white-space:nowrap;overflow:hidden;
           text-overflow:ellipsis;color:#ccc" title="${wp.name}">${wp.name}</span>
-        <button data-tp="${i}" title="Teleportar"
+        <button data-tp="${i}" title="${t('teleportWaypointTitle')}"
           style="background:rgba(255,208,96,.15);border:1px solid rgba(255,208,96,.35);
           color:#ffd060;font:10px 'Segoe UI';padding:1px 5px;border-radius:3px;
           cursor:pointer;flex-shrink:0">⭕</button>
-        <button data-del="${i}" title="Remover"
+        <button data-del="${i}" title="${t('removeWaypointTitle')}"
           style="background:transparent;border:none;color:#555;font:12px monospace;
           cursor:pointer;padding:0 2px;flex-shrink:0">✕</button>
       </div>
@@ -1037,6 +1145,9 @@
   }
 
   function applySettings(cfg) {
+    if (cfg.language && cfg.language !== currentLang) {
+      loadLanguage(cfg.language);
+    }
     if (cfg.autoHideFound) {
       waitForElement('#toggle-found', (btn) => {
         if (!btn.classList.contains('disabled')) btn.click();
@@ -1085,6 +1196,8 @@
       }
     }, 3000);
   })();
+
+  loadLanguage((window.__cdSettings && window.__cdSettings.language) || localStorage.getItem('cd_language') || 'en');
 
   // ── CSS overrides ──────────────────────────────────────────────────
   (function injectCSS() {
