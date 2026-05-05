@@ -82,14 +82,13 @@
     if (_gpWasJustPressed(gp.buttons, _GP_BUTTONS.DPAD_LEFT)) _gpToggleLeftSidebar();
     if (_gpWasJustPressed(gp.buttons, _GP_BUTTONS.DPAD_RIGHT)) _gpToggleRightSidebar();
 
-    // Hover at center for tooltips
-    _gpHoverAtCenter();
-
     // Pan — left stick
     const lx = _gpApplyDeadzone(gp.axes[0], _GP_CONFIG.deadzone);
     const ly = _gpApplyDeadzone(gp.axes[1], _GP_CONFIG.deadzone);
     if (lx !== 0 || ly !== 0) {
       m.panBy([lx * _GP_CONFIG.panSpeed, ly * _GP_CONFIG.panSpeed], { animate: false });
+      // Hover at center for tooltips only while panning
+      _gpHoverAtCenter();
     }
 
     // Zoom — LB / RB
