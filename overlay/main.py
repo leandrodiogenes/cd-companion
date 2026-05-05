@@ -330,6 +330,7 @@ class OverlayWindow(QMainWindow):
         # ── Hotkey ─────────────────────────────────────────────────────
         self._signals = HotkeySignals()
         self._signals.toggle.connect(self._toggle_visible)
+        self._signals.focus_toggle.connect(self._toggle_focus)
         if not getattr(sys, 'frozen', False):
             self._signals.restart.connect(self._do_dev_restart)
         threading.Thread(target=self._hotkey_thread, daemon=True).start()
@@ -341,7 +342,7 @@ class OverlayWindow(QMainWindow):
             )
 
         if _set_focus_toggle_callback:
-            _set_focus_toggle_callback(self._toggle_focus)
+            _set_focus_toggle_callback(lambda: self._signals.focus_toggle.emit())
 
     # ── Rounded corners ────────────────────────────────────────────────
     CORNER_RADIUS = 8

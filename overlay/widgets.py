@@ -1302,6 +1302,7 @@ class LoginPrompt(QDialog):
 class HotkeySignals(QObject):
     toggle = pyqtSignal()
     restart = pyqtSignal()
+    focus_toggle = pyqtSignal()
 
 
 # ── Barra customizada (arrastável, sem decoração do Windows) ──────────
