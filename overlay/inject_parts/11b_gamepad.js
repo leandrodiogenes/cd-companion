@@ -96,11 +96,16 @@
     if (_gpLoopId) return;
     _gpPrevButtons = {};
     _gpLoopId = true;
-    // MessageChannel-based loop: immune to Chromium timer throttling
+    // Throttled loop at ~60fps using MessageChannel (immune to Chromium timer throttling)
+    let _gpLastTick = 0;
     const channel = new MessageChannel();
     channel.port2.onmessage = () => {
       if (!_gpLoopId) return;
-      _gpLoop();
+      const now = performance.now();
+      if (now - _gpLastTick >= 16) {
+        _gpLastTick = now;
+        _gpLoop();
+      }
       channel.port1.postMessage(null);
     };
     channel.port1.postMessage(null);
