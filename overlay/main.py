@@ -692,18 +692,16 @@ class OverlayWindow(QMainWindow):
 
     def _toggle_focus(self):
         """Alterna foco entre o jogo e o overlay (foca o WebView do MapGenie)."""
-        user32 = ctypes.windll.user32
-        user32.GetForegroundWindow.restype = ctypes.wintypes.HWND
-        fg_hwnd = user32.GetForegroundWindow()
-        overlay_hwnd = int(self.winId())
-        # Se o overlay já está em foreground, devolve foco ao jogo
-        if int(fg_hwnd) == overlay_hwnd:
+        if getattr(self, '_overlay_focused', False):
+            # Overlay tem foco — devolve ao jogo
+            self._overlay_focused = False
             self._view.page().runJavaScript(
                 'window.__cdOverlayFocused = false;'
                 'window.__cdGamepadStop && window.__cdGamepadStop();')
             focus_game_window()
         else:
-            # Traz o overlay para frente e foca o WebView
+            # Jogo tem foco — traz overlay para frente
+            self._overlay_focused = True
             self.show()
             self.raise_()
             self.activateWindow()

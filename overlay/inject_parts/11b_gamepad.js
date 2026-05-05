@@ -1,7 +1,7 @@
   // ── Gamepad navigation (controller map interaction) ─────────────────
   const _GP_CONFIG = {
     deadzone: 0.15,
-    panSpeed: 6,
+    panSpeed: 16,
     zoomSpeed: 0.04,
     zoomStickSpeed: 0.06,
   };
