@@ -14,7 +14,6 @@
 
   let _gpIndex = null;
   let _gpPrevButtons = {};
-  let _gpActive = false;
 
   function _gpApplyDeadzone(v, dz) {
     if (Math.abs(v) < dz) return 0;
@@ -68,8 +67,7 @@
   function _gpLoop() {
     requestAnimationFrame(_gpLoop);
 
-    if (!_gpActive || _gpIndex === null) return;
-    if (!document.hasFocus()) return;
+    if (!window.__cdOverlayFocused || _gpIndex === null) return;
 
     const gp = navigator.getGamepads()[_gpIndex];
     if (!gp || !gp.connected) { _gpIndex = null; return; }
@@ -119,11 +117,6 @@
   for (const gp of navigator.getGamepads()) {
     if (gp?.connected) { _gpIndex = gp.index; break; }
   }
-
-  // Activate/deactivate when overlay gains/loses focus
-  window.addEventListener('focus', () => { _gpActive = true; });
-  window.addEventListener('blur', () => { _gpActive = false; });
-  _gpActive = document.hasFocus();
 
   // Start game loop
   requestAnimationFrame(_gpLoop);

@@ -697,11 +697,13 @@ class OverlayWindow(QMainWindow):
         overlay_hwnd = int(self.winId())
         # Se o overlay já está em foreground, devolve foco ao jogo
         if int(fg_hwnd) == overlay_hwnd:
+            self._view.page().runJavaScript('window.__cdOverlayFocused = false;')
             focus_game_window()
         else:
             # Traz o overlay para frente e foca o WebView
             self._activate_for_waypoints()
             self._view.setFocus()
+            self._view.page().runJavaScript('window.__cdOverlayFocused = true;')
 
     def _activate_for_waypoints(self):
         """Traz o overlay para frente quando o painel de waypoints abre."""
