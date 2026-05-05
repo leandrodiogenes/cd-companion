@@ -66,8 +66,6 @@
   }
 
   function _gpLoop() {
-    _gpLoopId = requestAnimationFrame(_gpLoop);
-
     if (_gpIndex === null) return;
     // Pause map navigation while nearby or waypoints popup is open
     if (isNearbyPopupOpen() || (waypointPopup && !waypointPopup.closed)) return;
@@ -110,12 +108,12 @@
   function _gpStart() {
     if (_gpLoopId !== null) return;
     _gpPrevButtons = {};
-    _gpLoopId = requestAnimationFrame(_gpLoop);
+    _gpLoopId = setInterval(_gpLoop, 16);
   }
 
   function _gpStop() {
     if (_gpLoopId !== null) {
-      cancelAnimationFrame(_gpLoopId);
+      clearInterval(_gpLoopId);
       _gpLoopId = null;
     }
     _gpPrevButtons = {};
