@@ -338,7 +338,7 @@ class OverlayWindow(QMainWindow):
         if _set_waypoints_focus_callbacks:
             _set_waypoints_focus_callbacks(
                 self._activate_for_waypoints,
-                focus_game_window,
+                self._on_popup_returned_focus_to_game,
             )
 
         if _set_focus_toggle_callback:
@@ -693,11 +693,7 @@ class OverlayWindow(QMainWindow):
     def _toggle_focus(self):
         """Alterna foco entre o jogo e o overlay (foca o WebView do MapGenie)."""
         if getattr(self, '_overlay_focused', False):
-            # Overlay tem foco — devolve ao jogo
-            self._overlay_focused = False
-            self._view.page().runJavaScript(
-                'window.__cdOverlayFocused = false;'
-                'window.__cdGamepadStop && window.__cdGamepadStop();')
+            self._deactivate_overlay_focus()
             focus_game_window()
         else:
             # Jogo tem foco — traz overlay para frente
@@ -710,6 +706,18 @@ class OverlayWindow(QMainWindow):
             self._view.page().runJavaScript(
                 'window.__cdOverlayFocused = true;'
                 'window.__cdGamepadStart && window.__cdGamepadStart();')
+
+    def _deactivate_overlay_focus(self):
+        """Para o gamepad e reseta o flag de foco do overlay."""
+        self._overlay_focused = False
+        self._view.page().runJavaScript(
+            'window.__cdOverlayFocused = false;'
+            'window.__cdGamepadStop && window.__cdGamepadStop();')
+
+    def _on_popup_returned_focus_to_game(self):
+        """Chamado quando um popup fecha e devolve foco ao jogo."""
+        self._deactivate_overlay_focus()
+        focus_game_window()
 
     def _activate_for_waypoints(self):
         """Traz o overlay para frente quando o painel de waypoints abre."""
