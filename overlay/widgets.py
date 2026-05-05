@@ -376,6 +376,8 @@ class SettingsDialog(QDialog):
 
         # Focus toggle hotkey
         section('Focus toggle', win_layout)
+        option('controllerMapNavigation', 'Enable controller map navigation',
+               'When focused on the overlay, use the controller to pan, zoom and interact with the map.')
         ft_hk_lbl = QLabel('Keyboard hotkey')
         self._focus_toggle_hk = QKeySequenceEdit()
         self._focus_toggle_hk.setFixedHeight(32)

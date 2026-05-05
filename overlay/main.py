@@ -712,10 +712,12 @@ class OverlayWindow(QMainWindow):
             self.activateWindow()
             self._activate_for_waypoints()
             self._view.setFocus()
-            self._view.page().runJavaScript(
-                'window.__cdOverlayFocused = true;'
-                'window.__cdGamepadStart && window.__cdGamepadStart();')
-            self._gamepad_timer.start()
+            cfg = load_config()
+            if cfg.get('controllerMapNavigation', SETTING_DEFAULTS['controllerMapNavigation']):
+                self._view.page().runJavaScript(
+                    'window.__cdOverlayFocused = true;'
+                    'window.__cdGamepadStart && window.__cdGamepadStart();')
+                self._gamepad_timer.start()
 
     def _deactivate_overlay_focus(self):
         """Para o gamepad e reseta o flag de foco do overlay."""
