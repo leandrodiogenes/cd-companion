@@ -129,7 +129,7 @@ _INJECT_PARTS = [
     '00_bootstrap.js', '01_state.js', '02_tooltip.js', '03_marker.js',
     '04_arrow.js', '05_panel.js', '06_teleport.js', '07_location_sync.js',
     '08_nearby.js', '09_websocket.js', '10_waypoints.js', '11_layout.js',
-    '12_init.js',
+    '11b_gamepad.js', '12_init.js',
 ]
 
 def _load_inject_js():

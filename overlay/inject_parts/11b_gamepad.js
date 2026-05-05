@@ -1,0 +1,130 @@
+  // ── Gamepad navigation (controller map interaction) ─────────────────
+  const _GP_CONFIG = {
+    deadzone: 0.15,
+    panSpeed: 6,
+    zoomSpeed: 0.04,
+    zoomStickSpeed: 0.06,
+  };
+
+  const _GP_BUTTONS = {
+    A: 0, B: 1,
+    LB: 4, RB: 5,
+    DPAD_LEFT: 14, DPAD_RIGHT: 15,
+  };
+
+  let _gpIndex = null;
+  let _gpPrevButtons = {};
+  let _gpActive = false;
+
+  function _gpApplyDeadzone(v, dz) {
+    if (Math.abs(v) < dz) return 0;
+    return (v - Math.sign(v) * dz) / (1 - dz);
+  }
+
+  function _gpWasJustPressed(buttons, index) {
+    const pressed = buttons[index]?.pressed ?? false;
+    const was = _gpPrevButtons[index] ?? false;
+    _gpPrevButtons[index] = pressed;
+    return pressed && !was;
+  }
+
+  function _gpHoverAtCenter() {
+    const x = window.innerWidth / 2;
+    const y = window.innerHeight / 2;
+    const canvas = document.querySelector('.mapboxgl-canvas');
+    if (!canvas) return;
+    canvas.dispatchEvent(new MouseEvent('mousemove', {
+      bubbles: true, cancelable: true, clientX: x, clientY: y,
+    }));
+  }
+
+  function _gpClickAtCenter() {
+    const x = window.innerWidth / 2;
+    const y = window.innerHeight / 2;
+    const target = document.elementFromPoint(x, y);
+    if (!target) return;
+    const opts = { bubbles: true, cancelable: true, clientX: x, clientY: y };
+    target.dispatchEvent(new MouseEvent('mousedown', opts));
+    target.dispatchEvent(new MouseEvent('mouseup', opts));
+    target.dispatchEvent(new MouseEvent('click', opts));
+  }
+
+  function _gpClosePopup() {
+    const btn = document.querySelector('.mapboxgl-popup-close-button');
+    if (btn) btn.click();
+  }
+
+  function _gpToggleLeftSidebar() {
+    const btn = document.querySelector('.sidebar-close .left-arrow')
+              ?? document.querySelector('.sidebar-close');
+    if (btn) btn.click();
+  }
+
+  function _gpToggleRightSidebar() {
+    const btn = document.querySelector('#right-sidebar .sidebar-close');
+    if (btn) btn.click();
+  }
+
+  function _gpLoop() {
+    requestAnimationFrame(_gpLoop);
+
+    if (!_gpActive || _gpIndex === null) return;
+    if (!document.hasFocus()) return;
+
+    const gp = navigator.getGamepads()[_gpIndex];
+    if (!gp || !gp.connected) { _gpIndex = null; return; }
+
+    const m = getMap();
+    if (!m) return;
+
+    // Button actions
+    if (_gpWasJustPressed(gp.buttons, _GP_BUTTONS.A)) _gpClickAtCenter();
+    if (_gpWasJustPressed(gp.buttons, _GP_BUTTONS.B)) _gpClosePopup();
+    if (_gpWasJustPressed(gp.buttons, _GP_BUTTONS.DPAD_LEFT)) _gpToggleLeftSidebar();
+    if (_gpWasJustPressed(gp.buttons, _GP_BUTTONS.DPAD_RIGHT)) _gpToggleRightSidebar();
+
+    // Hover at center for tooltips
+    _gpHoverAtCenter();
+
+    // Pan — left stick
+    const lx = _gpApplyDeadzone(gp.axes[0], _GP_CONFIG.deadzone);
+    const ly = _gpApplyDeadzone(gp.axes[1], _GP_CONFIG.deadzone);
+    if (lx !== 0 || ly !== 0) {
+      m.panBy([lx * _GP_CONFIG.panSpeed, ly * _GP_CONFIG.panSpeed], { animate: false });
+    }
+
+    // Zoom — LB / RB
+    let zoomDelta = 0;
+    if (gp.buttons[_GP_BUTTONS.RB]?.pressed) zoomDelta += _GP_CONFIG.zoomSpeed;
+    if (gp.buttons[_GP_BUTTONS.LB]?.pressed) zoomDelta -= _GP_CONFIG.zoomSpeed;
+
+    // Zoom — right stick Y
+    const ry = _gpApplyDeadzone(gp.axes[3], _GP_CONFIG.deadzone);
+    if (ry !== 0) zoomDelta -= ry * _GP_CONFIG.zoomStickSpeed;
+
+    if (zoomDelta !== 0) {
+      m.setZoom(m.getZoom() + zoomDelta, { animate: false });
+    }
+  }
+
+  // Gamepad connect/disconnect
+  window.addEventListener('gamepadconnected', (e) => {
+    _gpIndex = e.gamepad.index;
+  });
+  window.addEventListener('gamepaddisconnected', (e) => {
+    if (e.gamepad.index === _gpIndex) _gpIndex = null;
+  });
+
+  // Detect initial gamepad
+  for (const gp of navigator.getGamepads()) {
+    if (gp?.connected) { _gpIndex = gp.index; break; }
+  }
+
+  // Activate/deactivate when overlay gains/loses focus
+  window.addEventListener('focus', () => { _gpActive = true; });
+  window.addEventListener('blur', () => { _gpActive = false; });
+  _gpActive = document.hasFocus();
+
+  // Start game loop
+  requestAnimationFrame(_gpLoop);
+
