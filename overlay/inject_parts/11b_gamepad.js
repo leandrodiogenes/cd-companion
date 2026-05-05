@@ -1,9 +1,9 @@
   // ── Gamepad navigation (controller map interaction) ─────────────────
   const _GP_CONFIG = {
     deadzone: 0.15,
-    panSpeed: 32,
-    zoomSpeed: 0.08,
-    zoomStickSpeed: 0.10,
+    panSpeed: 12,
+    zoomSpeed: 0.05,
+    zoomStickSpeed: 0.07,
   };
 
   const _GP_BUTTONS = {
@@ -14,6 +14,7 @@
   let _gpIndex = null;
   let _gpPrevButtons = {};
   let _gpLoopId = null;
+  let _gpChannel = null;
 
   function _gpApplyDeadzone(v, dz) {
     if (Math.abs(v) < dz) return 0;
@@ -92,17 +93,29 @@
   }
 
   function _gpStart() {
-    _gpLoopId = true;
+    if (_gpLoopId) return;
     _gpPrevButtons = {};
+    _gpLoopId = true;
+    // MessageChannel-based loop: immune to Chromium timer throttling
+    const channel = new MessageChannel();
+    channel.port2.onmessage = () => {
+      if (!_gpLoopId) return;
+      _gpLoop();
+      channel.port1.postMessage(null);
+    };
+    channel.port1.postMessage(null);
+    _gpChannel = channel;
   }
 
   function _gpStop() {
     _gpLoopId = null;
+    if (_gpChannel) {
+      _gpChannel.port1.close();
+      _gpChannel.port2.close();
+      _gpChannel = null;
+    }
     _gpPrevButtons = {};
   }
-
-  // Called externally by Python QTimer at 60fps
-  window.__cdGamepadTick = _gpLoop;
 
   // Gamepad connect/disconnect
   window.addEventListener('gamepadconnected', (e) => {

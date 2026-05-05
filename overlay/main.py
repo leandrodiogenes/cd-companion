@@ -309,11 +309,6 @@ class OverlayWindow(QMainWindow):
         self._native_realtime_timer.setInterval(16)
         self._native_realtime_timer.timeout.connect(self._push_native_realtime)
 
-        # ── Timer para gamepad map navigation (não sofre throttling do Chromium)
-        self._gamepad_timer = QTimer(self)
-        self._gamepad_timer.setInterval(16)
-        self._gamepad_timer.timeout.connect(self._gamepad_tick)
-
         # ── Timer de hover para mostrar/ocultar a barra ────────────────
         self._hover_timer = QTimer(self)
         self._hover_timer.setInterval(40)
@@ -717,12 +712,10 @@ class OverlayWindow(QMainWindow):
                 self._view.page().runJavaScript(
                     'window.__cdOverlayFocused = true;'
                     'window.__cdGamepadStart && window.__cdGamepadStart();')
-                self._gamepad_timer.start()
 
     def _deactivate_overlay_focus(self):
         """Para o gamepad e reseta o flag de foco do overlay."""
         self._overlay_focused = False
-        self._gamepad_timer.stop()
         self._view.page().runJavaScript(
             'window.__cdOverlayFocused = false;'
             'window.__cdGamepadStop && window.__cdGamepadStop();')
@@ -731,10 +724,6 @@ class OverlayWindow(QMainWindow):
         """Chamado quando um popup fecha e devolve foco ao jogo."""
         self._deactivate_overlay_focus()
         focus_game_window()
-
-    def _gamepad_tick(self):
-        """Chama o loop do gamepad no JS via QTimer (evita throttling do Chromium)."""
-        self._view.page().runJavaScript('window.__cdGamepadTick && window.__cdGamepadTick();')
 
     def _activate_for_waypoints(self):
         """Traz o overlay para frente quando o painel de waypoints abre."""
