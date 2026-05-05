@@ -703,6 +703,9 @@ class OverlayWindow(QMainWindow):
             focus_game_window()
         else:
             # Traz o overlay para frente e foca o WebView
+            self.show()
+            self.raise_()
+            self.activateWindow()
             self._activate_for_waypoints()
             self._view.setFocus()
             self._view.page().runJavaScript(
