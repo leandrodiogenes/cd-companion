@@ -14,6 +14,7 @@
 
   let _gpIndex = null;
   let _gpPrevButtons = {};
+  let _gpLoopId = null;
 
   function _gpApplyDeadzone(v, dz) {
     if (Math.abs(v) < dz) return 0;
@@ -65,9 +66,9 @@
   }
 
   function _gpLoop() {
-    requestAnimationFrame(_gpLoop);
+    _gpLoopId = requestAnimationFrame(_gpLoop);
 
-    if (!window.__cdOverlayFocused || _gpIndex === null) return;
+    if (_gpIndex === null) return;
 
     const gp = navigator.getGamepads()[_gpIndex];
     if (!gp || !gp.connected) { _gpIndex = null; return; }
@@ -105,6 +106,20 @@
     }
   }
 
+  function _gpStart() {
+    if (_gpLoopId !== null) return;
+    _gpPrevButtons = {};
+    _gpLoopId = requestAnimationFrame(_gpLoop);
+  }
+
+  function _gpStop() {
+    if (_gpLoopId !== null) {
+      cancelAnimationFrame(_gpLoopId);
+      _gpLoopId = null;
+    }
+    _gpPrevButtons = {};
+  }
+
   // Gamepad connect/disconnect
   window.addEventListener('gamepadconnected', (e) => {
     _gpIndex = e.gamepad.index;
@@ -118,6 +133,8 @@
     if (gp?.connected) { _gpIndex = gp.index; break; }
   }
 
-  // Start game loop
-  requestAnimationFrame(_gpLoop);
+  // Exposed to Python — called by _toggle_focus
+  window.__cdGamepadStart = _gpStart;
+  window.__cdGamepadStop = _gpStop;
+
 
