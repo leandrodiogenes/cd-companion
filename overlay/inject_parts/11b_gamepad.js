@@ -69,6 +69,8 @@
     _gpLoopId = requestAnimationFrame(_gpLoop);
 
     if (_gpIndex === null) return;
+    // Pause map navigation while nearby or waypoints popup is open
+    if (isNearbyPopupOpen() || (waypointPopup && !waypointPopup.closed)) return;
 
     const gp = navigator.getGamepads()[_gpIndex];
     if (!gp || !gp.connected) { _gpIndex = null; return; }
