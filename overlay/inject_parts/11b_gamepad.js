@@ -9,7 +9,6 @@
   const _GP_BUTTONS = {
     A: 0, B: 1,
     LB: 4, RB: 5,
-    DPAD_LEFT: 14, DPAD_RIGHT: 15,
   };
 
   let _gpIndex = null;
@@ -54,17 +53,6 @@
     if (btn) btn.click();
   }
 
-  function _gpToggleLeftSidebar() {
-    const btn = document.querySelector('.sidebar-close .left-arrow')
-              ?? document.querySelector('.sidebar-close');
-    if (btn) btn.click();
-  }
-
-  function _gpToggleRightSidebar() {
-    const btn = document.querySelector('#right-sidebar .sidebar-close');
-    if (btn) btn.click();
-  }
-
   function _gpLoop() {
     if (_gpIndex === null) return;
     // Pause map navigation while nearby or waypoints popup is open
@@ -79,8 +67,6 @@
     // Button actions
     if (_gpWasJustPressed(gp.buttons, _GP_BUTTONS.A)) _gpClickAtCenter();
     if (_gpWasJustPressed(gp.buttons, _GP_BUTTONS.B)) _gpClosePopup();
-    if (_gpWasJustPressed(gp.buttons, _GP_BUTTONS.DPAD_LEFT)) _gpToggleLeftSidebar();
-    if (_gpWasJustPressed(gp.buttons, _GP_BUTTONS.DPAD_RIGHT)) _gpToggleRightSidebar();
 
     // Pan — left stick
     const lx = _gpApplyDeadzone(gp.axes[0], _GP_CONFIG.deadzone);
