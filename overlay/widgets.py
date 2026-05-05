@@ -45,6 +45,10 @@ try:
 except Exception:
     _HAS_CONTROLLER_HOTKEYS = False
 
+# Callback chamado quando qualquer popup fecha e devolve foco ao jogo.
+# O overlay main.py seta isso para parar o gamepad.
+_on_popup_close_focus_game = None
+
 # ── Hotkey helpers ────────────────────────────────────────────────────
 _SAVE_DIR = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'CD_Teleport')
 _HOTKEY_SETTINGS_FILE = os.path.join(_SAVE_DIR, 'cd_hotkeys.json')
@@ -1140,7 +1144,8 @@ class PopupWebWindow(QMainWindow):
             _set_waypoints_popup_hwnd(None)
         self.closed_with_pos.emit(self.pos())
         super().closeEvent(event)
-        QTimer.singleShot(50, focus_game_window)
+        cb = _on_popup_close_focus_game or focus_game_window
+        QTimer.singleShot(50, cb)
 
     def page(self):
         return self._page

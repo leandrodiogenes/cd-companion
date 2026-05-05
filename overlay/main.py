@@ -156,6 +156,7 @@ from overlay.widgets import (
     HotkeySignals, TitleBar,
     focus_game_window,
 )
+import overlay.widgets as _widgets_module
 
 try:
     from server.main import (
@@ -343,6 +344,9 @@ class OverlayWindow(QMainWindow):
 
         if _set_focus_toggle_callback:
             _set_focus_toggle_callback(lambda: self._signals.focus_toggle.emit())
+
+        # Registra callback para parar gamepad quando qualquer popup fecha
+        _widgets_module._on_popup_close_focus_game = self._on_popup_returned_focus_to_game
 
     # ── Rounded corners ────────────────────────────────────────────────
     CORNER_RADIUS = 8
