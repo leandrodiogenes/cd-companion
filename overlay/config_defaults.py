@@ -22,5 +22,5 @@ SETTING_DEFAULTS = {
     'nearbyRespectMapVisibility': True,
     'mapIconScale':          1.0,
     'browserZoom':           100,    # 70–150 %
-    'controllerMapNavigation': True,
+    'controllerMapNavigation': False,
 }
