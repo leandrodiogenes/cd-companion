@@ -54,7 +54,7 @@
   }
 
   function _gpLoop() {
-    if (_gpIndex === null) return;
+    if (!_gpLoopId || _gpIndex === null) return;
     // Pause map navigation while nearby or waypoints popup is open
     if (isNearbyPopupOpen() || (waypointPopup && !waypointPopup.closed)) return;
 
@@ -92,18 +92,17 @@
   }
 
   function _gpStart() {
-    if (_gpLoopId !== null) return;
+    _gpLoopId = true;
     _gpPrevButtons = {};
-    _gpLoopId = setInterval(_gpLoop, 16);
   }
 
   function _gpStop() {
-    if (_gpLoopId !== null) {
-      clearInterval(_gpLoopId);
-      _gpLoopId = null;
-    }
+    _gpLoopId = null;
     _gpPrevButtons = {};
   }
+
+  // Called externally by Python QTimer at 60fps
+  window.__cdGamepadTick = _gpLoop;
 
   // Gamepad connect/disconnect
   window.addEventListener('gamepadconnected', (e) => {
