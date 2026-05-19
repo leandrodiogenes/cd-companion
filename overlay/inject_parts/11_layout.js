@@ -142,12 +142,17 @@
         if (!btn.classList.contains('disabled')) btn.click();
       });
     }
-    if (cfg.autoHideLeftSidebar) {
-      waitForElement('.sidebar-close .left-arrow, .sidebar-close', (btn) => btn.click());
-    }
-    if (cfg.autoHideRightSidebar) {
-      waitForElement('#right-sidebar .sidebar-close', (btn) => btn.click());
-    }
+    [
+      ['left-sidebar', cfg.autoHideLeftSidebar],
+      ['right-sidebar', cfg.autoHideRightSidebar],
+    ].forEach(([id, enabled]) => {
+      if (!enabled) return;
+      waitForElement('#' + id, (sidebar) => {
+        if (sidebar.classList.contains('closed')) return;
+        const btn = sidebar.querySelector('.sidebar-close');
+        if (btn) btn.click();
+      });
+    });
 
     const waitMap = setInterval(() => {
       const m = getMap();
