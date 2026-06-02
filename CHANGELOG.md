@@ -1,3 +1,9 @@
+## v0.11.03
+
+### Fixed
+- Restored "Rotate map with camera" after the Crimson Desert 1.09.00 update. Following the patch, the camera heading was no longer detected, which disabled camera based map rotation. It works again.
+- Sidebar auto-hide no longer sends an extra click when the sidebar is already closed.
+
 ## v0.11.02
 
 ### Fixed

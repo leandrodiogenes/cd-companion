@@ -283,7 +283,7 @@ class CaveBuilderMixin:
         return bytes(c)
 
     def _build_cave_cam(self):
-        """Hook em vmovss [r15+0x4A4],xmm2 (heading da câmera em graus assinados).
+        """Hook em vmovss [r15+0x4CC],xmm2 (heading da câmera em graus assinados).
         Salva xmm2 em OFF_CAM_YAW e executa instrução original.
         Patch de 9 bytes — retorna para hook_cam+9 (próxima instrução intacta)."""
         cam_yaw = self.block + self.OFF_CAM_YAW
@@ -293,7 +293,7 @@ class CaveBuilderMixin:
         c += b'\x48\xB8' + struct.pack('<Q', cam_yaw)  # mov rax, cam_yaw_addr
         c += b'\xC5\xFA\x11\x10'                       # vmovss [rax], xmm2
         c += b'\x58'                                   # pop rax
-        c += self.ORIG_HOOK_CAM                        # vmovss [r15+0x4A4], xmm2
+        c += self.ORIG_HOOK_CAM                        # vmovss [r15+0x4CC], xmm2
         c += self._abs_jmp(ret)
         return bytes(c)
 
@@ -358,7 +358,7 @@ class CaveBuilderMixin:
                 self._remember_orig_bytes(self.hook_e)
                 self.pm.write_bytes(self.hook_e,
                     self._jmp_patch5(self.hook_e, self.block + self.OFF_CE), 5)
-            # Camera hook — patch de 9 bytes (instrução vmovss [r15+0x4A4],xmm2)
+            # Camera hook — patch de 9 bytes (instrução vmovss [r15+0x4CC],xmm2)
             if self.hook_cam:
                 orig = self.pm.read_bytes(self.hook_cam, 9)
                 if orig[:1] == b'\xE9':

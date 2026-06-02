@@ -49,16 +49,16 @@ class TeleportEngine(SharedMemoryMixin, ScannerMixin, MemAllocMixin, CaveBuilder
     # confirmado por +8: addps xmm0,[r13] + movups [r13],xmm0
     AOB_PHYS_DELTA_CONFIRM = b'\x41\x0F\x58\x45\x00\x41\x0F\x11\x45\x00'  # em hook_e+8
     AOB_PHYS_DELTA_HOOK    = b'\x0F\x28\xC6\xF3\x45\x0F\x5C\xC8'          # hook_e (8 bytes)
-    # vmovss [r15+0x4A4], xmm2  (heading da camera em graus assinados -180..180)
-    # instrução seguinte: vcomiss xmm9, xmm14
-    AOB_CAM  = b'\xC4\xC1\x7A\x11\x97\xA4\x04\x00\x00\xC5\x78\x2F\xCE'
+    # vmovss [r15+0x4CC], xmm2  (heading da camera em graus assinados -180..180)
+    # instrução seguinte: vcomiss xmm9, xmm6
+    AOB_CAM  = b'\xC4\xC1\x7A\x11\x97\xCC\x04\x00\x00\xC5\x78\x2F\xCE'
     HOOK_PATCH_SIZE = 7
     ORIG_HOOK_A   = b'\x48\x8B\x91\x30\x11\x00\x00'  # mov rdx,[rcx+0x1130]
     ORIG_HOOK_B   = AOB_POS
     ORIG_HOOK_C   = AOB_HEALTH
     ORIG_HOOK_D   = b'\xC5\xFB\x11\x02\x8B\x47\x08'  # vmovsd [rdx],xmm0 ; mov eax,[rdi+8]
     ORIG_HOOK_E   = b'\x0F\x28\xC6\xF3\x45\x0F\x5C'  # primeiros 7 bytes do hook_e
-    ORIG_HOOK_CAM = b'\xC4\xC1\x7A\x11\x97\xA4\x04\x00\x00'  # vmovss [r15+0x4A4],xmm2  (9 bytes)
+    ORIG_HOOK_CAM = b'\xC4\xC1\x7A\x11\x97\xCC\x04\x00\x00'  # vmovss [r15+0x4CC],xmm2  (9 bytes)
 
     OFF_TD      = 0x000
     OFF_INV     = 0x040
