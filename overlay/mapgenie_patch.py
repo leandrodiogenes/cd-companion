@@ -22,22 +22,22 @@ from PyQt5.QtWebEngineCore import (
 PATCH_SCHEME = 'cdcompanion-mapjs'
 MAPGENIE_MAP_JS_HOST = 'cdn.mapgenie.io'
 MAPGENIE_MAP_JS_PATH = '/js/map.js'
-PATCH_NEEDLE = (
-    ',{key:"renderCategory",value:function(e){var t=this,n=arguments.length>1&&'
-    'void 0!==arguments[1]&&arguments[1];if(zn[e.id])'
-)
+# Ancora apenas na assinatura do metodo, que e estavel entre rebuilds da
+# MapGenie. O corpo minificado (a variavel do lookup, ex: zn virou R) muda a
+# cada build e por isso nao deve fazer parte da ancora. Injetamos logo apos a
+# chave de abertura e deixamos o corpo original intacto.
+PATCH_NEEDLE = 'renderCategory",value:function(e){'
 PATCH_REPLACEMENT = (
-    ',{key:"renderCategory",value:function(e){window.__cdMapGeniePatch=window.'
-    '__cdMapGeniePatch||{version:1,hooks:{}};window.__cdMapGeniePatch.categories='
-    'window.__cdMapGeniePatch.categories||{};window.__cdMapGeniePatch.categories.'
-    'component=this;window.__cdMapGeniePatch.categories.props=this.props;window.'
-    '__cdMapGeniePatch.categories.categoriesMap=this.props&&this.props.'
-    'categoriesMap;window.__cdMapGeniePatch.categories.categoryGroups=this.props&&'
-    'this.props.categoryGroups;window.__cdMapGeniePatch.categories.'
-    'locationsByCategory=this.props&&this.props.locationsByCategory;window.'
-    '__cdMapGeniePatch.categories.ready=!!(this.props&&this.props.categoriesMap);'
+    'renderCategory",value:function(e){'
+    'window.__cdMapGeniePatch=window.__cdMapGeniePatch||{version:1,hooks:{}};'
+    'window.__cdMapGeniePatch.categories=window.__cdMapGeniePatch.categories||{};'
+    'window.__cdMapGeniePatch.categories.component=this;'
+    'window.__cdMapGeniePatch.categories.props=this.props;'
+    'window.__cdMapGeniePatch.categories.categoriesMap=this.props&&this.props.categoriesMap;'
+    'window.__cdMapGeniePatch.categories.categoryGroups=this.props&&this.props.categoryGroups;'
+    'window.__cdMapGeniePatch.categories.locationsByCategory=this.props&&this.props.locationsByCategory;'
+    'window.__cdMapGeniePatch.categories.ready=!!(this.props&&this.props.categoriesMap);'
     'window.__cdMapGeniePatch.categories.updatedAt=Date.now();'
-    'var t=this,n=arguments.length>1&&void 0!==arguments[1]&&arguments[1];if(zn[e.id])'
 )
 
 

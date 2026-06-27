@@ -1,3 +1,8 @@
+## v0.11.05
+
+### Fixed
+- Nearby Locations could stop loading category data after a map website update. The overlay now adapts to those updates automatically, so the feature keeps working without an app update.
+
 ## v0.11.04
 
 ### Fixed
