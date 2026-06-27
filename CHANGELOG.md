@@ -1,25 +1,13 @@
-## v0.11.07
+## v0.11.04
 
 ### Added
 - Restart option in the system tray menu, next to Quit.
 
 ### Fixed
-- The companion now re-attaches to the game automatically when the game is closed and reopened. Previously it could stay bound to the old game process and stop reading position and teleport until the companion itself was restarted.
-
-## v0.11.06
-
-### Fixed
-- Hide Left Panel and Hide Right Panel sometimes failed to close the sidebars on startup. The close action could run before the map page finished initializing and was ignored. The overlay now retries until each panel is actually hidden.
-
-## v0.11.05
-
-### Fixed
-- Nearby Locations could stop loading category data after a map website update. The overlay now adapts to those updates automatically, so the feature keeps working without an app update.
-
-## v0.11.04
-
-### Fixed
 - After a Crimson Desert update, the companion could crash the game while loading a save. Offsets cached from a previous game version were reused without validation, which could make the companion patch the wrong memory address. Cached offsets are now validated on attach, and the whole cache is rebuilt automatically when a game update is detected. Deleting the cached offsets file by hand is no longer required.
+- The companion now re-attaches to the game automatically when the game is closed and reopened. Previously it could stay bound to the old game process and stop reading position and teleport until the companion itself was restarted.
+- Nearby Locations could stop loading category data after a map website update. The overlay now adapts to those updates automatically, so the feature keeps working without an app update.
+- Hide Left Panel and Hide Right Panel sometimes failed to close the sidebars on startup. The close action could run before the map page finished initializing and was ignored. The overlay now retries until each panel is actually hidden.
 
 ## v0.11.03
 
