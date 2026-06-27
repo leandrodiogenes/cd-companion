@@ -1,3 +1,8 @@
+## v0.11.06
+
+### Fixed
+- Hide Left Panel and Hide Right Panel sometimes failed to close the sidebars on startup. The close action could run before the map page finished initializing and was ignored. The overlay now retries until each panel is actually hidden.
+
 ## v0.11.05
 
 ### Fixed

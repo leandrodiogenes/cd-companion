@@ -136,6 +136,26 @@
     } catch (_) {}
   }
 
+  // Fecha a sidebar e re-tenta ate ela realmente fechar. O botao .sidebar-close
+  // vem no HTML server-rendered, mas o handler de clique do React so e ligado
+  // depois da hydration. Um unico clique cedo (assim que o elemento aparece)
+  // cai num botao ainda sem handler e nao faz nada. Aqui re-clicamos a cada
+  // 300ms ate a classe 'closed' aparecer (ou ate o timeout), parando assim que
+  // fecha para nao brigar com o usuario caso ele reabra depois.
+  function autoHideSidebar(id, timeout = 20000) {
+    const deadline = Date.now() + timeout;
+    const tick = () => {
+      const sidebar = document.getElementById(id);
+      if (sidebar && !sidebar.classList.contains('closed')) {
+        const btn = sidebar.querySelector('.sidebar-close');
+        if (btn) btn.click();
+      }
+      const closed = sidebar && sidebar.classList.contains('closed');
+      if (!closed && Date.now() < deadline) setTimeout(tick, 300);
+    };
+    tick();
+  }
+
   function applySettings(cfg) {
     if (cfg.autoHideFound) {
       waitForElement('#toggle-found', (btn) => {
@@ -147,11 +167,7 @@
       ['right-sidebar', cfg.autoHideRightSidebar],
     ].forEach(([id, enabled]) => {
       if (!enabled) return;
-      waitForElement('#' + id, (sidebar) => {
-        if (sidebar.classList.contains('closed')) return;
-        const btn = sidebar.querySelector('.sidebar-close');
-        if (btn) btn.click();
-      });
+      autoHideSidebar(id);
     });
 
     const waitMap = setInterval(() => {
