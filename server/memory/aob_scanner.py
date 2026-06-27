@@ -72,9 +72,43 @@ class ScannerMixin:
             pos = i + 1
         return 0, 0, 0
 
+    def _cached_hook_addr(self, saved, key, orig, data, base):
+        """Resolve um hook a partir do cache validando os bytes no RVA salvo.
+
+        Retorna o endereço absoluto se os bytes baterem com `orig` (instrução
+        original intacta) ou com um JMP nosso (E9) de uma sessão anterior sem
+        detach limpo. Caso contrário limpa a entrada do cache e retorna 0.
+
+        Isto evita instalar o trampolim de 7 bytes num endereço stale depois de
+        um patch do jogo — o que sobrescreveria código deslocado e crasharia o
+        processo ao carregar o save."""
+        if key not in saved:
+            return 0
+        rva = int(saved[key])
+        if 0 <= rva <= len(data) - len(orig):
+            chunk = data[rva:rva + len(orig)]
+            if chunk == orig or chunk[:1] == b'\xE9':
+                return base + rva
+        saved.pop(key, None)
+        _save_hook_offsets(saved)
+        log.warning("Cached %s stale or out of range, cache cleared", key)
+        return 0
+
     def scan_and_hook(self):
         data, base = self._read_module()
         saved = _load_hook_offsets()
+
+        # Fingerprint do modulo do jogo. Quando o jogo atualiza, o SizeOfImage
+        # quase sempre muda; se nao bater com o que foi salvo, todo o cache de
+        # RVAs e considerado stale e descartado, forcando um AOB scan limpo.
+        # Invalidacao proativa: complementa a validacao de bytes por-hook abaixo,
+        # evitando ate a tentativa de reusar offsets de uma versao anterior.
+        module_size = self.module.SizeOfImage
+        if saved and saved.get("module_size") != module_size:
+            log.warning(
+                "Game module changed (image size %s != cached %s) — discarding hook cache",
+                module_size, saved.get("module_size"))
+            saved = {}
 
         # Busca endereços estáticos XYZ (não requer hook de entidade)
         self.xyz_addr = self._find_xyz_static(data, base)
@@ -98,22 +132,24 @@ class ScannerMixin:
             idx = data.find(self.AOB_ENTITY)
             if idx != -1:
                 self.hook_a = base + idx + 7  # pula "sub rsp,50; mov rdi,rcx" (7 bytes)
-            elif "hook_a_rva" in saved:
-                self.hook_a = base + int(saved["hook_a_rva"])
-            elif not any(self.xyz_addr):
-                raise RuntimeError("Entity hook AOB not found and no static XYZ — update required")
             else:
-                self.hook_a = 0
-                log.warning("Entity hook AOB not found — teleport unavailable, position via static globals")
+                self.hook_a = self._cached_hook_addr(saved, "hook_a_rva", self.ORIG_HOOK_A, data, base)
+                if self.hook_a:
+                    log.info("Entity hook loaded from cache")
+                elif not any(self.xyz_addr):
+                    raise RuntimeError("Entity hook AOB not found and no static XYZ — update required")
+                else:
+                    log.warning("Entity hook AOB not found — teleport unavailable, position via static globals")
 
         idx = data.find(self.AOB_POS)
         if idx != -1:
             self.hook_b = base + idx
-        elif "hook_b_rva" in saved:
-            self.hook_b = base + int(saved["hook_b_rva"])
         else:
-            self.hook_b = 0
-            log.warning("Position hook AOB not found — skipping hook_b")
+            self.hook_b = self._cached_hook_addr(saved, "hook_b_rva", self.ORIG_HOOK_B, data, base)
+            if self.hook_b:
+                log.info("Position hook loaded from cache")
+            else:
+                log.warning("Position hook AOB not found — skipping hook_b")
 
         idx = data.find(self.AOB_HEALTH)
         if not self.teleport_enabled:
@@ -121,11 +157,12 @@ class ScannerMixin:
             log.info("Teleport disabled — skipping health/invuln hook (hook_c)")
         elif idx != -1:
             self.hook_c = base + idx
-        elif "hook_c_rva" in saved:
-            self.hook_c = base + int(saved["hook_c_rva"])
         else:
-            self.hook_c = 0
-            log.warning("Health hook AOB not found — invuln unavailable")
+            self.hook_c = self._cached_hook_addr(saved, "hook_c_rva", self.ORIG_HOOK_C, data, base)
+            if self.hook_c:
+                log.info("Health hook loaded from cache")
+            else:
+                log.warning("Health hook AOB not found — invuln unavailable")
 
         # Cache tem prioridade sobre AOB scan: o módulo pode ter múltiplas ocorrências
         # do padrão, e quando o JMP da sessão anterior ainda está instalado, find()
@@ -306,4 +343,5 @@ class ScannerMixin:
             "hook_cam_rva":     self.hook_cam - base if self.hook_cam else None,
             "world_offset_rva": self.world_offset_addr - base if self.world_offset_addr else None,
         }.items() if v is not None}
+        save_data["module_size"] = module_size
         _save_hook_offsets(save_data)

@@ -1,3 +1,8 @@
+## v0.11.04
+
+### Fixed
+- After a Crimson Desert update, the companion could crash the game while loading a save. Offsets cached from a previous game version were reused without validation, which could make the companion patch the wrong memory address. Cached offsets are now validated on attach, and the whole cache is rebuilt automatically when a game update is detected. Deleting the cached offsets file by hand is no longer required.
+
 ## v0.11.03
 
 ### Fixed
