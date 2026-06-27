@@ -2,6 +2,10 @@
   "_language_name": "English",
   "_language_code": "en",
 
+  "tray.show_hide": "Show/Hide Overlay",
+  "tray.restart": "Restart",
+  "tray.quit": "Quit",
+
   "panel.follow_on": "🗺 Follow: ON",
   "panel.follow_off": "🗺 Follow: OFF",
   "panel.follow_short": "F",

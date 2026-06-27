@@ -10,6 +10,7 @@ Resultado: uma única janela visível (o overlay PyQt5).
 import ctypes
 import os
 import sys
+import time
 
 # ── Detecta se está rodando como exe compilado (PyInstaller) ──────────
 
@@ -41,17 +42,30 @@ if not _is_admin():
 _MUTEX_NAME = "Global\\CDCompanion_SingleInstance"
 
 def _acquire_single_instance_mutex():
-    """Cria um named mutex global. Retorna o handle ou encerra o processo."""
-    handle = ctypes.windll.kernel32.CreateMutexW(None, True, _MUTEX_NAME)
-    if ctypes.windll.kernel32.GetLastError() == 183:  # ERROR_ALREADY_EXISTS
-        ctypes.windll.user32.MessageBoxW(
-            None,
-            "CD Companion já está em execução.",
-            "CD Companion",
-            0x00000030,  # MB_ICONWARNING
-        )
-        sys.exit(0)
-    return handle  # mantém o handle vivo enquanto o processo rodar
+    """Cria um named mutex global. Retorna o handle ou encerra o processo.
+
+    Quando relançado pelo proprio app via "Restart" (flag --restarted), a
+    instancia antiga ainda pode estar viva por um instante segurando o mutex.
+    Nesse caso aguardamos ate ~12s o mutex ser liberado, em vez de mostrar
+    "ja em execucao" e sair.
+    """
+    restarting = '--restarted' in sys.argv
+    deadline = time.monotonic() + 12 if restarting else 0
+    while True:
+        handle = ctypes.windll.kernel32.CreateMutexW(None, True, _MUTEX_NAME)
+        if ctypes.windll.kernel32.GetLastError() == 183:  # ERROR_ALREADY_EXISTS
+            if restarting and time.monotonic() < deadline:
+                ctypes.windll.kernel32.CloseHandle(handle)
+                time.sleep(0.25)
+                continue
+            ctypes.windll.user32.MessageBoxW(
+                None,
+                "CD Companion já está em execução.",
+                "CD Companion",
+                0x00000030,  # MB_ICONWARNING
+            )
+            sys.exit(0)
+        return handle  # mantém o handle vivo enquanto o processo rodar
 
 _mutex_handle = _acquire_single_instance_mutex()
 

@@ -1,3 +1,11 @@
+## v0.11.07
+
+### Added
+- Restart option in the system tray menu, next to Quit.
+
+### Fixed
+- The companion now re-attaches to the game automatically when the game is closed and reopened. Previously it could stay bound to the old game process and stop reading position and teleport until the companion itself was restarted.
+
 ## v0.11.06
 
 ### Fixed

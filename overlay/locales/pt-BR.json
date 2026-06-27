@@ -2,6 +2,10 @@
   "_language_name": "Português (Brasil)",
   "_language_code": "pt-BR",
 
+  "tray.show_hide": "Mostrar/Ocultar Overlay",
+  "tray.restart": "Reiniciar",
+  "tray.quit": "Sair",
+
   "panel.follow_on": "🗺 Seguir: ON",
   "panel.follow_off": "🗺 Seguir: OFF",
   "panel.follow_short": "S",

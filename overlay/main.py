@@ -342,7 +342,7 @@ class OverlayWindow(QMainWindow):
         self._signals.toggle.connect(self._toggle_visible)
         self._signals.toggle_shape.connect(self._toggle_shape)
         if not getattr(sys, 'frozen', False):
-            self._signals.restart.connect(self._do_dev_restart)
+            self._signals.restart.connect(self._do_restart)
         threading.Thread(target=self._hotkey_thread, daemon=True).start()
         threading.Thread(target=self._controller_toggle_thread, daemon=True).start()
 
@@ -794,15 +794,26 @@ class OverlayWindow(QMainWindow):
         else:
             user32.SetForegroundWindow(hwnd)
 
-    def _do_dev_restart(self):
-        _PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    def _do_restart(self):
+        """Reinicia o app inteiro (overlay + servidor). Funciona em dev e no exe.
+
+        Frozen: relança o proprio exe com --restarted, que faz o launcher
+        aguardar o mutex de instancia unica liberar antes de subir. Dev:
+        relança o modulo do overlay direto (sem launcher/mutex)."""
         self.close()
-        subprocess.Popen(
-            [sys.executable, '-m', 'overlay.main'],
-            cwd=_PROJECT_DIR,
-            creationflags=0x00000010,  # CREATE_NEW_CONSOLE
-        )
-        # Fecha o console antigo para evitar "Pressione qualquer tecla..."
+        if getattr(sys, 'frozen', False):
+            subprocess.Popen(
+                [sys.executable, '--restarted'],
+                cwd=os.path.dirname(sys.executable),
+            )
+        else:
+            _PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            subprocess.Popen(
+                [sys.executable, '-m', 'overlay.main'],
+                cwd=_PROJECT_DIR,
+                creationflags=0x00000010,  # CREATE_NEW_CONSOLE
+            )
+        # Fecha o console antigo para evitar "Pressione qualquer tecla..." (dev)
         kernel32 = ctypes.windll.kernel32
         console = kernel32.GetConsoleWindow()
         if console:
@@ -1106,31 +1117,48 @@ def main():
     window = OverlayWindow(cfg, screen_w, screen_h)
     window.show()
 
-    _tray, _tray_parent = _create_tray_icon(app, 'CD Companion', toggle_fn=window._toggle_visible)
+    _tray, _tray_parent = _create_tray_icon(
+        app, 'CD Companion',
+        toggle_fn=window._toggle_visible,
+        restart_fn=window._do_restart)
 
     print("[*] Overlay started  —  hotkey: Ctrl+Shift+M")
 
     sys.exit(app.exec_())
 
 
-def _create_tray_icon(app, tooltip='CD Companion', toggle_fn=None):
+def _create_tray_icon(app, tooltip='CD Companion', toggle_fn=None, restart_fn=None):
     """Cria e retorna um QSystemTrayIcon com menu Quit.
 
     Se toggle_fn for fornecido (modo full), clique esquerdo e a opção
-    'Show/Hide Overlay' no menu acionam esse callback.
+    'Show/Hide Overlay' no menu acionam esse callback. Se restart_fn for
+    fornecido, adiciona uma opção 'Restart' que reinicia o app.
     Não chama app.exec_().
 
     Nota: QMenu requer um QWidget como parent no Windows para não ser
     coletado pelo GC e para o setContextMenu funcionar corretamente.
     """
-    from PyQt5.QtWidgets import QSystemTrayIcon, QMenu, QAction, QWidget
+    from PyQt5.QtWidgets import QSystemTrayIcon, QMenu, QAction, QWidget, QStyle, QApplication
     from PyQt5.QtGui import QIcon
 
+    # Tenta varios caminhos: _MEIPASS (datas do PyInstaller), ao lado do exe e a
+    # raiz do projeto (dev). Se o spec for regenerado e nao bundlar o ico, ainda
+    # cai num icone padrao do Qt para a tray nunca ficar invisivel.
+    _icon_candidates = []
     if getattr(sys, 'frozen', False):
-        _icon_dir = sys._MEIPASS
+        _icon_candidates.append(os.path.join(sys._MEIPASS, 'launcher.ico'))
+        _icon_candidates.append(os.path.join(os.path.dirname(sys.executable), 'launcher.ico'))
     else:
-        _icon_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    icon = QIcon(os.path.join(_icon_dir, 'launcher.ico'))
+        _icon_candidates.append(
+            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'launcher.ico'))
+    icon = QIcon()
+    for _p in _icon_candidates:
+        if os.path.exists(_p):
+            icon = QIcon(_p)
+            break
+    if icon.isNull():
+        print("[!] Tray icon launcher.ico not found — using fallback icon")
+        icon = QApplication.instance().style().standardIcon(QStyle.SP_ComputerIcon)
 
     # Widget oculto: serve de parent para o menu (requisito do Windows)
     parent_widget = QWidget()
@@ -1142,7 +1170,7 @@ def _create_tray_icon(app, tooltip='CD Companion', toggle_fn=None):
     menu = QMenu(parent_widget)
 
     if toggle_fn is not None:
-        toggle_action = QAction('Show/Hide Overlay', menu)
+        toggle_action = QAction(i18n.t('tray.show_hide'), menu)
         toggle_action.triggered.connect(toggle_fn)
         menu.addAction(toggle_action)
         menu.addSeparator()
@@ -1153,7 +1181,12 @@ def _create_tray_icon(app, tooltip='CD Companion', toggle_fn=None):
 
         tray.activated.connect(_on_activated)
 
-    quit_action = QAction('Quit', menu)
+    if restart_fn is not None:
+        restart_action = QAction(i18n.t('tray.restart'), menu)
+        restart_action.triggered.connect(restart_fn)
+        menu.addAction(restart_action)
+
+    quit_action = QAction(i18n.t('tray.quit'), menu)
     quit_action.triggered.connect(app.quit)
     menu.addAction(quit_action)
 
