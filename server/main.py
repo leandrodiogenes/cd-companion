@@ -742,6 +742,12 @@ async def _broadcast_loop():
         }
 
     while True:
+        # Detecta o jogo fechado: o handle ainda esta "attached" mas o processo
+        # morreu. As leituras retornam None sem lancar, entao sem este check o
+        # engine nunca soltaria o handle morto para re-anexar ao novo processo.
+        if _engine.attached and not _engine.is_process_alive():
+            _engine.detach()
+
         # Attach if needed
         if not _engine.attached:
             if _was_attached:

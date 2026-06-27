@@ -24,6 +24,11 @@ from server.memory.aob_scanner import ScannerMixin
 
 log = logging.getLogger('cd_server')
 
+# Tipagem obrigatoria antes de chamar via ctypes: sem isto o handle de 64 bits
+# seria truncado para 32 bits (crash SEH silencioso). Ver feedback_ctypes_argtypes.
+k32.WaitForSingleObject.argtypes = [ctypes.wintypes.HANDLE, ctypes.wintypes.DWORD]
+k32.WaitForSingleObject.restype  = ctypes.wintypes.DWORD
+
 
 # ── TeleportEngine (position reading only) ───────────────────────────
 
@@ -107,6 +112,21 @@ class TeleportEngine(SharedMemoryMixin, ScannerMixin, MemAllocMixin, CaveBuilder
         self.module = pymem.process.module_from_name(
             self.pm.process_handle, PROCESS_NAME)
         self.attached = True
+
+    def is_process_alive(self):
+        """True se o processo do jogo ainda esta vivo.
+
+        Necessario porque as leituras (get_player_pos etc.) engolem excecoes e
+        retornam None quando o processo morre, em vez de lancar. Sem isto o
+        engine ficaria preso ao handle de um processo morto e nunca re-anexaria
+        ao novo processo quando o jogo fosse reaberto."""
+        if not self.pm:
+            return False
+        try:
+            WAIT_OBJECT_0 = 0x0  # processo sinalizado = ja terminou
+            return k32.WaitForSingleObject(self.pm.process_handle, 0) != WAIT_OBJECT_0
+        except Exception:
+            return False
 
     @property
     def status(self):
