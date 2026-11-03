@@ -9,6 +9,9 @@ Resultado: uma única janela visível (o overlay PyQt5).
 
 import ctypes
 import os
+os.environ['QT_API'] = 'pyside6'
+# Explicit imports let PyInstaller collect the selected browser binding.
+from PySide6 import QtCore, QtGui, QtWidgets, QtWebEngineCore, QtWebEngineWidgets
 import sys
 import time
 

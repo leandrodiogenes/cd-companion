@@ -154,6 +154,7 @@
       document.head.appendChild(s);
     }
     marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
-      .setLngLat([0, 0]).addTo(map);
+      .setLngLat(lastPos ? [lastPos.lng, lastPos.lat] : [0, 0]).addTo(map);
+    if (lastPos && following) liveEaseTo(map, { center: [lastPos.lng, lastPos.lat] });
   }
 

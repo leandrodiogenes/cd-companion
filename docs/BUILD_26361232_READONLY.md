@@ -4,7 +4,7 @@ This is a draft integration proposal, not a general game-version compatibility c
 
 On game executable 1.0.0.3479 (Steam 26361232), the old entity/static-position signatures are absent. Android can connect to the WebSocket server but remains at "Waiting for player". The updated static signature is unique on the exact executable below.
 
-Set these environment variables before starting the existing launcher, and select Server Only:
+Set these environment variables before starting the existing launcher, and select PC Overlay or Server Only:
 
 ```powershell
 $env:CD_READ_ONLY_26361232 = '1'

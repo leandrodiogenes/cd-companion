@@ -11,7 +11,7 @@
   updateTeleportVisibility();
   connect();
   setInterval(() => {
-    if (window.mapManager && typeof window.mapManager.updateFoundLocationsStyle === 'function')
+    if (window.mapManager && window.mapManager.map && window.mapManager.map.isStyleLoaded() && typeof window.mapManager.updateFoundLocationsStyle === 'function')
       window.mapManager.updateFoundLocationsStyle();
   }, 50);
 })();
