@@ -11,7 +11,7 @@ Uso:
   python -m overlay.main
 
 Dependências:
-  pip install PyQt5 PyQtWebEngine pymem websockets
+  pip install -r requirements.txt
 """
 
 import asyncio
@@ -19,17 +19,19 @@ import ctypes
 import ctypes.wintypes
 import json
 import os
+os.environ['QT_API'] = 'pyside6'
 import subprocess
 import sys
 import threading
-from PyQt5.QtCore import Qt, QUrl, QTimer, pyqtSignal, QObject
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtGui import QCursor
-from PyQt5.QtGui import QBitmap, QPainter, QColor, QPen
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget,
+from qtpy.QtCore import Qt, QUrl, QTimer, Signal, QObject
+from qtpy.QtWidgets import QApplication
+from qtpy.QtGui import QCursor
+from qtpy.QtGui import QBitmap, QPainter, QColor, QPen
+from qtpy.QtWidgets import (QApplication, QMainWindow, QWidget,
                              QDialog, QVBoxLayout, QHBoxLayout,
                              QLabel, QCheckBox, QPushButton, QSlider)
-from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
+from qtpy.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
+from qtpy.QtWebEngineCore import QWebEngineScript
 
 from overlay.config_defaults import SETTING_DEFAULTS
 import overlay.i18n as i18n
@@ -304,8 +306,23 @@ class OverlayWindow(QMainWindow):
         page = InterceptPage(self._view)
         page.login_needed.connect(self._on_login_needed)
         self._view.setPage(page)
+        settings = {k: cfg.get(k, v) for k, v in SETTING_DEFAULTS.items()}
+        settings['i18n'] = i18n._instance.get_dict() if i18n._instance else {}
+        script = QWebEngineScript()
+        script.setName('CD Companion live tracking')
+        script.setInjectionPoint(QWebEngineScript.DocumentReady)
+        script.setWorldId(QWebEngineScript.MainWorld)
+        script.setRunsOnSubFrames(False)
+        script.setSourceCode(
+            '(function(){const ready=setInterval(function(){'
+            'if(!window.mapManager?.map || !window.map?.isStyleLoaded?.())return;'
+            'clearInterval(ready);'
+            f'window.__cdSettings = {json.dumps(settings)};'
+            f'window.__cdNativeRealtimeEnabled = {json.dumps(settings.get("realtimeTransport") == "native")};'
+            + INJECT_JS + '},200);})();')
+        page.scripts().insert(script)
         self._mapgenie_patch_refs = None
-        if os.environ.get('CD_PATCH_MAPGENIE_MAP_JS', '1') != '0':
+        if os.environ.get('CD_PATCH_MAPGENIE_MAP_JS', '0') != '0':
             self._mapgenie_patch_refs = install_mapgenie_patch(page.profile(), self)
 
         self._view.loadFinished.connect(self._on_load_finished)
@@ -965,8 +982,12 @@ def _show_mode_selector(current_mode):
     Retorna 'full' ou 'server_only'. Retorna None se o usuário fechou sem escolher.
     O QApplication é criado temporariamente se necessário e reutilizado depois.
     """
-    from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
-    from PyQt5.QtCore import Qt
+    if '--server-only' in sys.argv:
+        return 'server_only'
+    if '--overlay' in sys.argv:
+        return 'full'
+    from qtpy.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
+    from qtpy.QtCore import Qt
 
     # Precisa de QApplication para mostrar o dialog
     app = QApplication.instance()
@@ -1039,6 +1060,7 @@ def _show_mode_selector(current_mode):
 
 
 def main():
+    register_mapgenie_patch_scheme()
     # ── Log file (sem console, logs vão para arquivo) ─────────────────
     # Definido ANTES de importar server.main, pois o logging é configurado
     # no nível do módulo e lê CD_LOG_FILE no momento do import.
@@ -1085,7 +1107,7 @@ def main():
     assert_admin()
     _check_dependencies()
 
-    # ── Modo server_only: sem PyQt5, apenas servidor + hotkeys ────────
+    # ── Modo server_only: sem PySide6, apenas servidor + hotkeys ────────
     if overlay_mode == 'server_only':
         _run_server_only()
         return
@@ -1106,7 +1128,6 @@ def main():
     # Recarrega INJECT_JS para o modo correto
     global INJECT_JS
 
-    register_mapgenie_patch_scheme()
     app = QApplication.instance()
     if app is None:
         app = QApplication(sys.argv)
@@ -1138,8 +1159,8 @@ def _create_tray_icon(app, tooltip='CD Companion', toggle_fn=None, restart_fn=No
     Nota: QMenu requer um QWidget como parent no Windows para não ser
     coletado pelo GC e para o setContextMenu funcionar corretamente.
     """
-    from PyQt5.QtWidgets import QSystemTrayIcon, QMenu, QAction, QWidget, QStyle, QApplication
-    from PyQt5.QtGui import QIcon
+    from qtpy.QtWidgets import QSystemTrayIcon, QMenu, QAction, QWidget, QStyle, QApplication
+    from qtpy.QtGui import QIcon
 
     # Tenta varios caminhos: _MEIPASS (datas do PyInstaller), ao lado do exe e a
     # raiz do projeto (dev). Se o spec for regenerado e nao bundlar o ico, ainda

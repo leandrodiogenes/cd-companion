@@ -9,14 +9,14 @@ import ctypes.wintypes
 import json
 import os
 
-from PyQt5.QtCore import Qt, QPoint, QTimer, pyqtSignal, QObject
-from PyQt5.QtGui import QKeySequence
-from PyQt5.QtWidgets import (QApplication, QDialog, QVBoxLayout, QHBoxLayout,
+from qtpy.QtCore import Qt, QPoint, QTimer, Signal, QObject
+from qtpy.QtGui import QKeySequence
+from qtpy.QtWidgets import (QApplication, QDialog, QVBoxLayout, QHBoxLayout,
                              QLabel, QCheckBox, QPushButton, QSlider,
                              QMainWindow, QShortcut, QWidget, QKeySequenceEdit,
                              QScrollArea, QFrame, QLineEdit, QTabWidget,
                              QComboBox)
-from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
+from qtpy.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 
 # Importa SETTING_DEFAULTS do módulo de configuração
 from overlay.config_defaults import SETTING_DEFAULTS
@@ -1712,7 +1712,7 @@ class SettingsDialog(QDialog):
 # ── Janelas WebEngine auxiliares ─────────────────────────────────────
 
 class PopupWebWindow(QMainWindow):
-    closed_with_pos = pyqtSignal(object)  # emits QPoint when window closes
+    closed_with_pos = Signal(object)  # emits QPoint when window closes
 
     def __init__(self, parent=None, title='CD Overlay'):
         super().__init__(parent)
@@ -1752,7 +1752,7 @@ class PopupWebWindow(QMainWindow):
 
 
 class InterceptPage(QWebEnginePage):
-    login_needed = pyqtSignal()
+    login_needed = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -1760,7 +1760,8 @@ class InterceptPage(QWebEnginePage):
         self._last_popup_pos = None   # persists popup position within the session
 
     def createWindow(self, window_type):
-        overlay = self.view().window() if self.view() else None
+        view = self.parent()
+        overlay = view.window() if isinstance(view, QWebEngineView) else None
         popup = PopupWebWindow(overlay, 'CD Overlay')
         self._popup_windows.append(popup)
         popup.destroyed.connect(lambda _=None, p=popup: self._forget_popup(p))
@@ -1905,9 +1906,9 @@ class LoginPrompt(QDialog):
 # ── Sinal para toggle thread-safe ────────────────────────────────────
 
 class HotkeySignals(QObject):
-    toggle = pyqtSignal()
-    restart = pyqtSignal()
-    toggle_shape = pyqtSignal()
+    toggle = Signal()
+    restart = Signal()
+    toggle_shape = Signal()
 
 
 # ── Barra customizada (arrastável, sem decoração do Windows) ──────────

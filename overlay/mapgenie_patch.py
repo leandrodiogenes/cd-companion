@@ -11,8 +11,8 @@ import sys
 import urllib.parse
 import urllib.request
 
-from PyQt5.QtCore import QByteArray, QBuffer, QIODevice, QUrl
-from PyQt5.QtWebEngineCore import (
+from qtpy.QtCore import QByteArray, QBuffer, QIODevice, QUrl
+from qtpy.QtWebEngineCore import (
     QWebEngineUrlRequestInterceptor,
     QWebEngineUrlScheme,
     QWebEngineUrlSchemeHandler,
@@ -43,7 +43,7 @@ PATCH_REPLACEMENT = (
 
 def register_mapgenie_patch_scheme():
     scheme = QWebEngineUrlScheme(PATCH_SCHEME.encode('ascii'))
-    scheme.setSyntax(QWebEngineUrlScheme.Syntax.HostAndPort)
+    scheme.setSyntax(QWebEngineUrlScheme.Syntax.Host)
     scheme.setFlags(
         QWebEngineUrlScheme.SecureScheme |
         QWebEngineUrlScheme.LocalScheme |
@@ -159,5 +159,5 @@ def install_mapgenie_patch(profile, parent=None):
     handler = MapGenieMapJsSchemeHandler(parent)
     interceptor = MapGenieMapJsInterceptor(parent)
     profile.installUrlSchemeHandler(PATCH_SCHEME.encode('ascii'), handler)
-    profile.setRequestInterceptor(interceptor)
+    profile.setUrlRequestInterceptor(interceptor)
     return handler, interceptor
