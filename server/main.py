@@ -23,6 +23,7 @@ import sys
 import threading
 import time
 
+from shared.map_layer import current_pywel_coordinates
 from server.readonly_position import ReadOnlyPositionEngine
 from server.memory import TeleportEngine
 from server.memory.engine import (
@@ -714,6 +715,8 @@ async def _broadcast_loop():
     teleport_enabled = os.environ.get('CD_TELEPORT_ENABLED', '1') != '0'
     use_shared_memory_entity = os.environ.get('CD_USE_SHARED_MEMORY_ENTITY', '1') != '0'
     read_only = os.environ.get("CD_READ_ONLY_26361232", "0") == "1"
+    if os.environ.get("CD_MAPGENIE_PYWEL_LAYER") == "dlc-v3" and not read_only:
+        raise RuntimeError("The proposed dlc-v3 map adapter requires read-only mode")
     if read_only and teleport_enabled:
         raise RuntimeError("Read-only build 26361232 mode requires CD_TELEPORT_ENABLED=0")
     engine_type = ReadOnlyPositionEngine if read_only else TeleportEngine
@@ -821,6 +824,8 @@ async def _broadcast_loop():
             _last_broadcast_time = now
             cal = _get_cal(realm)
             lng, lat = game_to_lnglat(x, z, cal)
+            if realm == "pywel" and os.environ.get("CD_MAPGENIE_PYWEL_LAYER") == "dlc-v3":
+                lng, lat = current_pywel_coordinates(lng, lat)
             heading = _engine.get_player_heading()
             _last_pos = {"x": x, "y": y, "z": z, "realm": realm}
             payload = {
