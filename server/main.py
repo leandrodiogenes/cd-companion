@@ -23,6 +23,7 @@ import sys
 import threading
 import time
 
+from server.readonly_position import ReadOnlyPositionEngine
 from server.memory import TeleportEngine
 from server.memory.engine import (
     PROCESS_NAME, SAVE_DIR, HOOK_OFFSETS_FILE, HEIGHT_BOOST,
@@ -177,6 +178,8 @@ async def _handle_client(websocket):
 
     # Enviar waypoints salvos ao conectar
     await _send_waypoints(websocket)
+    if getattr(_engine, "read_only", False):
+        await _safe_send(websocket, json.dumps({"type": "engine_status", "status": "attached" if _engine.attached else "disconnected", "teleportEnabled": False}))
 
     try:
         async for raw in websocket:
@@ -186,6 +189,8 @@ async def _handle_client(websocket):
                 continue
 
             action = cmd.get("cmd")
+            if getattr(_engine, "read_only", False) and action in {"teleport", "teleport_map", "teleport_marker", "abort", "move", "set_invuln"}:
+                continue
 
             if action == "client_options":
                 opts = _client_options.setdefault(websocket, {})
@@ -708,8 +713,12 @@ async def _broadcast_loop():
     global _engine, _last_pos
     teleport_enabled = os.environ.get('CD_TELEPORT_ENABLED', '1') != '0'
     use_shared_memory_entity = os.environ.get('CD_USE_SHARED_MEMORY_ENTITY', '1') != '0'
-    _engine = TeleportEngine(teleport_enabled=teleport_enabled,
-                              use_shared_memory_entity=use_shared_memory_entity)
+    read_only = os.environ.get("CD_READ_ONLY_26361232", "0") == "1"
+    if read_only and teleport_enabled:
+        raise RuntimeError("Read-only build 26361232 mode requires CD_TELEPORT_ENABLED=0")
+    engine_type = ReadOnlyPositionEngine if read_only else TeleportEngine
+    _engine = engine_type(teleport_enabled=teleport_enabled,
+                          use_shared_memory_entity=use_shared_memory_entity)
     if not teleport_enabled:
         log.info("Teleport DISABLED — hooks hook_e and hook_c will not be injected")
     _last_broadcast_time: float = 0.0
